@@ -1,12 +1,47 @@
 package main
 
 import (
+	"company"
 	"fmt"
+	"shape"
 	"testlib" //init만을 사용하고 싶은 경우 import _ "testlib"
+	"time"
 )
 
 var b int = 5
 
+type person struct { //Go는 Class, Object, Inheritance가 없 -> struct로 대신
+	name string
+	age  int
+}
+
+func interfaceAndStructExample() {
+
+	p := person{"jonny", 12}
+	println(p.age)
+	println(p.name)
+	comp := company.Company{Address: "pangyo"}
+	comp2 := new(company.Company)
+	comp2.Address = "jeju"
+	println(&p)
+	println(&comp)
+	println(comp.Address)
+	println(comp2)
+	println(comp2.Address)
+
+	comp3 := company.NewCompany()
+	comp3.Address = "siheung"
+	fmt.Println(comp3)
+	comp3.Employee[`jonny`] = `manager`
+	fmt.Println(comp3.CalculateAllSalary())
+	fmt.Println(comp3.Employee)
+	comp3.UpgradeLevel("jonny")
+	fmt.Println(comp3.Employee)
+
+	circle := shape.Circle{Radius: 3}
+	rectangle := shape.Rectangle{Angle: 4, Length: 5}
+	getAnglesAndArea(circle, rectangle)
+}
 func switchCaseExample(i int) {
 	switch i {
 	case 4:
@@ -164,27 +199,135 @@ func sliceExample() {
 	println(ss)
 }
 
+func goChannelExample() {
+	goChannel := make(chan int)
+	// 이를 통해 goroutine에서 데이터를 주고 받는다.
+	// 상대편이 준비될 때까지 채널에서 대기함에 따라 별도의 lock을 걸지 않고 데이타를 동기화하는데 사용된다.
+	go func() {
+		goChannel <- 123
+	}()
+
+	var number int
+	number = <-goChannel
+	println(number)
+}
+
+func goChannelExample2() int {
+	//Unbuffered Channel
+	//하나의 수신자가 데이타를 받을 때까지 송신자가 데이타를 보내는 채널에 묶여 있게 된다.
+	done := make(chan bool)
+	go func() {
+		for i := 0; i < 10; i++ {
+			fmt.Println(i)
+		}
+		done <- true
+	}()
+
+	// 위의 Go루틴이 끝날 때까지 대기
+	<-done
+
+	return 5
+}
+
+func bufferedChannelExample() {
+	//수신자가 받을 준비가 되어 있지 않을 지라도 지정된 버퍼만큼 데이타를 보내고 계속 다른 일을 수행할 수 있다.
+	channel := make(chan string, 1) // buffered channel 생성(type, NumberOfBuffers)
+	channel <- "String Channel"
+	fmt.Println(<-channel)
+	// Unbuffered channel이었다면 별도 수신 goroutine이 없기 때문에 deadlock
+}
+
+//수신 전용 channel
+func receive(ch <-chan string) {
+	data, success := <-ch // 데이터, 수신이 제대로 되었는지
+	fmt.Println(data, success)
+	if _, success := <-ch; !success {
+		println("더이상 데이타 없음.")
+	}
+}
+
+//송신 전용 channel
+func send(ch chan<- string) {
+	ch <- "Sending Channel"
+}
+
+func channelParameterExample() {
+	ch := make(chan string, 1)
+	send(ch)
+	close(ch)
+	//send(ch) //Error
+	receive(ch) //Sending Channel, true
+	receive(ch) // false
+	//defer close(ch) //채널이 닫힌 후에도 수신은 가능하지만, 송신은 불가능
+	//for i := range ch { 수신한 만큰 println
+	//	println(i)
+	//}
+}
+
+func goSelectExample() int{
+	ch1 := make(chan bool)
+	ch2 := make(chan bool)
+
+	go func() {
+		time.Sleep(1 * time.Second)
+		ch1 <- true
+	}()
+	go func() {
+		time.Sleep(3 * time.Second)
+		ch2 <- true
+	}()
+	for {
+		println("NOT")
+		select { //select : 복수의 채널을 동시에 기다린다.
+		case <-ch1:
+			println("Ch1")
+			return 2
+		case <-ch2:
+			println("Ch2")
+			return 1
+		}
+	}
+}
 func mapExample() {
-	var idMap map[int]string // = 으로 할당이 불가능(Nil Map)
+	var idMap map[int]string     // = 으로 할당이 불가능(Nil Map)
 	map2 := make(map[int]string) // make로 초기화 후에 = 으로 할당이 가능
 	println(idMap, map2)
-	map2[3]="heee"
-	map2[4]="hh"
-	println(idMap,map2)
+	map2[3] = "heee"
+	map2[4] = "hh"
+	println(idMap, map2)
 	println(map2[3])
 	fmt.Println(map2)
 	val, exists := map2[3]
-	println(val,exists)
-	delete(map2,3)
+	println(val, exists)
+	delete(map2, 3)
 	println(map2[3])
 	val, exists = map2[3]
-	println(val,exists)
-	for key,value := range map2{
-		println(key,value)
+	println(val, exists)
+	for key, value := range map2 {
+		println(key, value)
+	}
+}
+
+func packageExample() {
+
+	song := testlib.GetMusic("Alicia Keys")
+	fmt.Println(song)
+}
+
+func getAnglesAndArea(shapes ...shape.Shape) {
+	for _, s := range shapes {
+		fmt.Println(s.GetAngles(), s.GetArea())
+	}
+}
+
+func say(s string) {
+	for i := 0; i < 10; i++ {
+		fmt.Println(s, "***", i)
 	}
 }
 
 func main() {
+	defer println("Good Bye") //해당 함수의 마지막에 실행된다.(에러가 발생하더라도)
 	println("Hello, World")
 	allocateExample()
 	pointerExample()
@@ -237,6 +380,28 @@ func main() {
 	arrayExample()
 	sliceExample()
 	mapExample()
-	song:= testlib.GetMusic("Alicia Keys")
-	fmt.Println(song)
+
+	// panic("Error received") //에러 Trace
+	println("Finished")
+
+	// Go Routine
+	// Thread보다 가볍게 concurrency 처리
+	// 보통 OS Thread 하나로 처리하고 Go runtime 상에서 관린된다.
+	// go channel과  함께 사용하여 통신이 쉽게할 수 있
+	go say("Async1")
+	go say("Async2")
+	go say("Async3")
+	//runtime.GOMAXPROCS(NumberOfCpus) //여러 개의 CPU를 가진 머신에서 parallel하게 할 수 있음(Logical CPUs)
+	// parallel과 concurrency는 다르다.
+	// parallel: 계산의 동시 실행
+	// concurrency: 독립적으로 실행되는 process 구성
+	// Concurrency 동시에 많은 것들을 처리하는 것이다. Parallelism은 많은 것을 동시에 하는 것이다.
+	//time.Sleep(time.Second * 3)
+
+	goChannelExample()
+
+	println("Answer=", goChannelExample2())
+	bufferedChannelExample()
+	channelParameterExample()
+	goSelectExample()
 }
